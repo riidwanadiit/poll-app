@@ -18,7 +18,7 @@ const PollRoom = () => {
     if (storedRoom) {
       router.push(`/?room=${storedRoom}`);
     }
-  }, [storedRoom]);
+  }, [storedRoom, router]);
 
   return <div>{roomId ? <PokerRoom /> : <RoomForm />}</div>;
 };

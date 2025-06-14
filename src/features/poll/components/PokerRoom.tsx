@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { database as db } from "@lib/firebase";
 import { ref, set, onValue, remove, get, update } from "firebase/database";
@@ -38,20 +38,16 @@ const PokerRoom = () => {
   const [roomName, setRoomName] = useState("");
 
   // Quit
-  const handleQuit = async () => {
-    // if (!roomId || !name) return;
-
+  const handleQuit = useCallback(async () => {
     const roomRef = ref(db, `rooms/${roomId}`);
     const membersRef = ref(db, `rooms/${roomId}/members`);
 
     if (isCreator) {
-      // Get all members
       const membersSnapshot = await get(membersRef);
       const membersData = membersSnapshot.val();
 
       if (membersData) {
         const memberNames = Object.keys(membersData);
-        // Remove each member
         await Promise.all(
           memberNames.map((memberName) =>
             remove(ref(db, `rooms/${roomId}/members/${memberName}`))
@@ -59,23 +55,20 @@ const PokerRoom = () => {
         );
       }
 
-      // Finally, delete the entire room
       await remove(roomRef);
     } else {
-      // Just remove the member
       await remove(ref(db, `rooms/${roomId}/members/${name}`));
     }
 
-    // Clean up cookies and redirect
     Cookies.remove("poker_name");
     Cookies.remove("poker_room");
     Cookies.remove("poker_role");
 
     router.replace("/");
-  };
-  
+  }, [roomId, name, isCreator, router]);
+
   // Check if room exists in Firebase
-  const checkRoomExists = async () => {
+  const checkRoomExists = useCallback(async () => {
     if (!roomId) return;
 
     const roomRef = ref(db, `rooms/${roomId}`);
@@ -85,7 +78,7 @@ const PokerRoom = () => {
       handleQuit(); // quit handler cleans cookies and redirects
       return;
     }
-  };
+  }, [roomId, handleQuit]);
 
   // Join room (add to members)
   const handleJoin = async () => {
@@ -186,18 +179,7 @@ const PokerRoom = () => {
 
   useEffect(() => {
     checkRoomExists();
-
-    // if (!roomId) {
-    //   alert("Room does not exist");
-    //   Cookies.remove("poker_name");
-    //   Cookies.remove("poker_room");
-    //   Cookies.remove("poker_role");
-    //   router.replace("/");
-    //   return;
-    // }
-
-    // checkRoomExists();
-  }, [roomId, router]);
+  }, [roomId, router, checkRoomExists]);
 
   useEffect(() => {
     if (storedName) setName(storedName);
@@ -282,7 +264,7 @@ const PokerRoom = () => {
       }
     });
     return () => unsubscribe();
-  }, [roomId, name, hasJoined]);
+  }, [roomId, name, hasJoined, router]);
 
   // Load room state
   useEffect(() => {
