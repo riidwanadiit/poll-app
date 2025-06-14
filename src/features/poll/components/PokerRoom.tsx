@@ -37,6 +37,168 @@ const PokerRoom = () => {
   const [newPassword, setNewPassword] = useState("");
   const [roomName, setRoomName] = useState("");
 
+  // Quit
+  const handleQuit = async () => {
+    // if (!roomId || !name) return;
+
+    const roomRef = ref(db, `rooms/${roomId}`);
+    const membersRef = ref(db, `rooms/${roomId}/members`);
+
+    if (isCreator) {
+      // Get all members
+      const membersSnapshot = await get(membersRef);
+      const membersData = membersSnapshot.val();
+
+      if (membersData) {
+        const memberNames = Object.keys(membersData);
+        // Remove each member
+        await Promise.all(
+          memberNames.map((memberName) =>
+            remove(ref(db, `rooms/${roomId}/members/${memberName}`))
+          )
+        );
+      }
+
+      // Finally, delete the entire room
+      await remove(roomRef);
+    } else {
+      // Just remove the member
+      await remove(ref(db, `rooms/${roomId}/members/${name}`));
+    }
+
+    // Clean up cookies and redirect
+    Cookies.remove("poker_name");
+    Cookies.remove("poker_room");
+    Cookies.remove("poker_role");
+
+    router.replace("/");
+  };
+  
+  // Check if room exists in Firebase
+  const checkRoomExists = async () => {
+    if (!roomId) return;
+
+    const roomRef = ref(db, `rooms/${roomId}`);
+    const snapshot = await get(roomRef);
+    if (!snapshot.exists()) {
+      alert("Room does not exist");
+      handleQuit(); // quit handler cleans cookies and redirects
+      return;
+    }
+  };
+
+  // Join room (add to members)
+  const handleJoin = async () => {
+    checkRoomExists();
+
+    if (!name.trim() || !roomId) return;
+
+    const memberRef = ref(db, `rooms/${roomId}/members/${name}`);
+
+    // Check if the name already exists
+    const snapshot = await get(memberRef);
+    if (snapshot.exists()) {
+      alert("This name is already in use. Please choose another one.");
+      return;
+    }
+
+    // Otherwise, add the user to members
+    await set(memberRef, true);
+
+    Cookies.set("poker_name", name);
+    Cookies.set("poker_room", roomId);
+    Cookies.set("poker_role", "member");
+
+    setHasJoined(true);
+  };
+
+  // Cast vote
+  const handleVote = async (value: string) => {
+    checkRoomExists();
+    if (!name || !roomId || revealed) return;
+    await set(ref(db, `rooms/${roomId}/votes/${name}`), value);
+    setVote(value);
+  };
+
+  // Set question (creator only)
+  const handleSetQuestion = async (q: string) => {
+    checkRoomExists();
+    setQuestion(q);
+    await set(ref(db, `rooms/${roomId}/question`), q);
+  };
+
+  // Reveal results (creator only)
+  const handleReveal = async () => {
+    checkRoomExists();
+    await set(ref(db, `rooms/${roomId}/revealed`), true);
+  };
+
+  // Reset poll (creator only)
+  const handleReset = async () => {
+    checkRoomExists();
+    await update(ref(db, `rooms/${roomId}`), {
+      votes: null, // Clear all votes
+      revealed: false, // Hide results
+      // question is preserved!
+    });
+  };
+
+  //   Kick Member
+  const handleKick = async (memberName: string) => {
+    checkRoomExists();
+    if (!roomId) return;
+    if (!isCreator) return;
+    if (memberName === name) return; // creator cannot kick themselves
+
+    await remove(ref(db, `rooms/${roomId}/members/${memberName}`));
+  };
+
+  const handleSetCardValues = async () => {
+    checkRoomExists();
+    const values = customCardInput
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (values.length > 0) {
+      await update(ref(db, `rooms/${roomId}`), { cardValues: values }).then(
+        () => setCustomCardInput("")
+      );
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    checkRoomExists();
+    if (!roomId) return;
+
+    const trimmed = newPassword.trim();
+
+    // Update password (empty string means remove)
+    await update(ref(db, `rooms/${roomId}`), {
+      password: trimmed || null,
+    });
+
+    setIsEditingPassword(false);
+    setNewPassword("");
+    if (newPassword == "") {
+      setRoomPassword(null);
+    }
+  };
+
+  useEffect(() => {
+    checkRoomExists();
+
+    // if (!roomId) {
+    //   alert("Room does not exist");
+    //   Cookies.remove("poker_name");
+    //   Cookies.remove("poker_room");
+    //   Cookies.remove("poker_role");
+    //   router.replace("/");
+    //   return;
+    // }
+
+    // checkRoomExists();
+  }, [roomId, router]);
+
   useEffect(() => {
     if (storedName) setName(storedName);
     if (storedRole === "creator") {
@@ -178,140 +340,6 @@ const PokerRoom = () => {
       setRoomName(snapshot.val() || "");
     });
   }, [roomId]);
-
-  // Join room (add to members)
-  const handleJoin = async () => {
-    if (!name.trim() || !roomId) return;
-
-    const memberRef = ref(db, `rooms/${roomId}/members/${name}`);
-
-    // Check if the name already exists
-    const snapshot = await get(memberRef);
-    if (snapshot.exists()) {
-      alert("This name is already in use. Please choose another one.");
-      return;
-    }
-
-    // Otherwise, add the user to members
-    await set(memberRef, true);
-
-    Cookies.set("poker_name", name);
-    Cookies.set("poker_room", roomId);
-    Cookies.set("poker_role", "member");
-
-    setHasJoined(true);
-  };
-
-  // Cast vote
-  const handleVote = async (value: string) => {
-    if (!name || !roomId || revealed) return;
-    await set(ref(db, `rooms/${roomId}/votes/${name}`), value);
-    setVote(value);
-  };
-
-  // Set question (creator only)
-  const handleSetQuestion = async (q: string) => {
-    setQuestion(q);
-    await set(ref(db, `rooms/${roomId}/question`), q);
-  };
-
-  // Reveal results (creator only)
-  const handleReveal = async () => {
-    await set(ref(db, `rooms/${roomId}/revealed`), true);
-  };
-
-  // Reset poll (creator only)
-  const handleReset = async () => {
-    await update(ref(db, `rooms/${roomId}`), {
-      votes: null, // Clear all votes
-      revealed: false, // Hide results
-      // question is preserved!
-    });
-  };
-
-  //   Kick Member
-  const handleKick = async (memberName: string) => {
-    if (!roomId) return;
-    if (!isCreator) return;
-    if (memberName === name) return; // creator cannot kick themselves
-
-    await remove(ref(db, `rooms/${roomId}/members/${memberName}`));
-  };
-
-  // Quit
-  const handleQuit = async () => {
-    // if (!roomId || !name) return;
-
-    const roomRef = ref(db, `rooms/${roomId}`);
-    const membersRef = ref(db, `rooms/${roomId}/members`);
-
-    if (isCreator) {
-      // Get all members
-      const membersSnapshot = await get(membersRef);
-      const membersData = membersSnapshot.val();
-
-      if (membersData) {
-        const memberNames = Object.keys(membersData);
-        // Remove each member
-        await Promise.all(
-          memberNames.map((memberName) =>
-            remove(ref(db, `rooms/${roomId}/members/${memberName}`))
-          )
-        );
-      }
-
-      // Finally, delete the entire room
-      await remove(roomRef);
-    } else {
-      // Just remove the member
-      await remove(ref(db, `rooms/${roomId}/members/${name}`));
-    }
-
-    // Clean up cookies and redirect
-    Cookies.remove("poker_name");
-    Cookies.remove("poker_room");
-    Cookies.remove("poker_role");
-
-    router.replace("/");
-  };
-
-  const handleSetCardValues = async () => {
-    const values = customCardInput
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (values.length > 0) {
-      await update(ref(db, `rooms/${roomId}`), { cardValues: values }).then(
-        () => setCustomCardInput("")
-      );
-    }
-  };
-
-  // const handleCopyRoomId = async () => {
-  //   try {
-  //     await navigator.clipboard.writeText(window.location.href);
-  //     alert("Room ID copied to clipboard!");
-  //   } catch (err) {
-  //     alert("Failed to copy room ID.");
-  //   }
-  // };
-
-  const handleUpdatePassword = async () => {
-    if (!roomId) return;
-
-    const trimmed = newPassword.trim();
-
-    // Update password (empty string means remove)
-    await update(ref(db, `rooms/${roomId}`), {
-      password: trimmed || null,
-    });
-
-    setIsEditingPassword(false);
-    setNewPassword("");
-    if (newPassword == "") {
-      setRoomPassword(null);
-    }
-  };
 
   return (
     <div>
