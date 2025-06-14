@@ -2,13 +2,16 @@
 
 import React from "react";
 
-type ClientWrapperProps = {
-  Component: React.ComponentType<any>;
-  componentProps?: Record<string, any>;
+type ClientWrapperProps<T extends Record<string, unknown> = {}> = {
+  Component: React.ComponentType<T>;
+  componentProps?: T;
 };
 
-const ClientWrapper: React.FC<ClientWrapperProps> = ({ Component, componentProps }) => {
-  return <Component {...componentProps} />;
-};
+function ClientWrapper<T extends Record<string, unknown> = {}>({
+  Component,
+  componentProps,
+}: ClientWrapperProps<T>) {
+  return <Component {...(componentProps ?? ({} as T))} />;
+}
 
 export default ClientWrapper;
