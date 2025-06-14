@@ -1,11 +1,16 @@
-'use client'
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 
-import PollRoom from "@/features/poll/views/PollRoom";
+const PollRoomNoSSR = dynamic(() => import("@/features/poll/views/PollRoom"), {
+  ssr: false,
+});
 
 export default function Home() {
   return (
     <main className="min-h-screen flex items-center justify-center p-8">
-      <PollRoom />
+      <Suspense fallback={<div>Loading...</div>}>
+        <PollRoomNoSSR />
+      </Suspense>
     </main>
   );
 }
