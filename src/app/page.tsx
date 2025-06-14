@@ -1,3 +1,5 @@
+'use client';
+
 import PollRoom from "@/features/poll/views/PollRoom";
 
 export default function Home() {
