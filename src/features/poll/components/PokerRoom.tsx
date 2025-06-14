@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { isRoomCreator } from "../lib/room";
 import Cookies from "js-cookie";
-import { Copy, Edit, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 
 const DEFAULT_CARDS = ["1", "2", "3", "5", "8", "11", "13"];
 

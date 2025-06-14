@@ -2,12 +2,10 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import PokerRoom from "../components/PokerRoom";
 import RoomForm from "../components/RoomForm";
 import Cookies from "js-cookie";
-import { database } from "@lib/firebase";
-import { ref, set, onValue } from "firebase/database";
 
 const PollRoom = () => {
   const params = useSearchParams();
