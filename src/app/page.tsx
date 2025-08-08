@@ -1,4 +1,3 @@
-'use client'
 
 import ClientWrapper from "@/components/ClientWrapper";
 import PollRoom from "@/features/poll/views/PollRoom";
