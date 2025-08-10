@@ -11,7 +11,8 @@ function ClientWrapper<T extends object = object>({
   Component,
   componentProps,
 }: ClientWrapperProps<T>) {
-  return <Component {...(componentProps ?? {} as T)} />;
+  const safeProps = componentProps || ({} as T);
+  return <Component {...safeProps} />;
 }
 
-export default ClientWrapper;
+export default React.memo(ClientWrapper);
